@@ -122,7 +122,7 @@ const userAuth = passport.authenticate("jwt", { session: false });
 //Get all Book
 app.get("/allBooks", async (req, res) => {
   try {
-    const results = await db.query("select * FROM bookslist");
+    const results = await db.query("SELECT * FROM bookslist");
     res.status(200).json({
       status: "success",
       results: results.rows.length,
@@ -139,14 +139,26 @@ app.get("/allBooks", async (req, res) => {
 app.get("/allBooks/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const results = await db.query("SELECT * FROM bookslist WHERE id = $1", [
+    const booklist = await db.query("SELECT * FROM bookslist WHERE id = $1", [
       id,
     ]);
+
+    const review = await db.query(
+      "SELECT * FROM reviews WHERE bookslist_id = $1",
+      [id]
+    );
+
+    const averageRating = await db.query(
+      "SELECT Avg(rating) FROM reviews WHERE bookslist_id = $1;",
+      [id]
+    );
+
     res.status(200).json({
       status: "success",
-      results: results.rows.length,
       data: {
-        bookslist: results.rows[0],
+        bookslist: booklist.rows[0],
+        review: review.rows,
+        averageRating: averageRating.rows[0],
       },
     });
   } catch (err) {
@@ -167,6 +179,7 @@ app.post("/allBooks", async (req, res) => {
       categories,
       book_description,
     } = req.body;
+
     const results = await db.query(
       "INSERT INTO bookslist (book_title, author, book_id, year, book_snippet, img_link, categories, book_description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
       [
@@ -180,6 +193,7 @@ app.post("/allBooks", async (req, res) => {
         book_description,
       ]
     );
+
     res.status(201).json({
       status: "success",
       results: results.rows.length,
@@ -196,16 +210,30 @@ app.post("/allBooks", async (req, res) => {
 //Get all user name and email
 app.get("/getuser", async (req, res) => {
   try {
-    const results = await db.query(
-      "select user_id, username, email FROM users"
-    );
-    res.status(200).json({
-      status: "success",
+    const { email } = req.query;
 
-      users: results.rows,
-    });
+    const results = await db.query(
+      "SELECT username FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (results.rows.length > 0) {
+      res.status(200).json({
+        status: "success",
+        username: results.rows[0].username,
+      });
+    } else {
+      res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
+    }
   } catch (error) {
     console.log(error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
@@ -270,39 +298,20 @@ app.get("/logout", async (req, res) => {
   }
 });
 
-//Edit book
-//Need to change this to edit review
-app.put("/allBooks/:id", async (req, res) => {
+//Get review from a user
+app.get("/review/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      book_title,
-      author,
-      book_id,
-      year,
-      book_snippet,
-      img_link,
-      categories,
-      book_description,
-    } = req.body;
+
     const results = await db.query(
-      "UPDATE bookslist SET book_title = $1, author  = $2, book_id  = $3, year = $4, book_snippet  = $5, img_link, categories = $7, book_description = $8 WHERE id = $6 RETURNING *",
-      [
-        book_title,
-        author,
-        book_id,
-        year,
-        book_snippet,
-        img_link,
-        id,
-        categories,
-        book_description,
-      ]
+      "SELECT reviews.id, review, rating, bookslist_id, created_at, book_title, author, year, img_link FROM reviews INNER JOIN bookslist ON reviews.bookslist_id = bookslist.id WHERE user_username = $1",
+      [id]
     );
     res.status(200).json({
       status: "success",
+      results: results.rows.length,
       data: {
-        bookslist: results.rows[0],
+        review: results.rows,
       },
     });
   } catch (err) {
@@ -310,12 +319,73 @@ app.put("/allBooks/:id", async (req, res) => {
   }
 });
 
-//Delete book
-//Need to change this to delete review
-app.delete("/allBooks/:id", async (req, res) => {
+//Get reivew base on id (reviews itself)
+app.get("/revieweditdata/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const results = await db.query("DELETE FROM bookslist WHERE id = $1", [id]);
+
+    // const results = await db.query("SELECT * FROM reviews WHERE id = $1", [id]);
+    const results = await db.query(
+      "SELECT reviews.id, review, rating, created_at, book_title, author, year, img_link FROM reviews INNER JOIN bookslist ON reviews.bookslist_id = bookslist.id WHERE reviews.id = $1",
+      [id]
+    );
+    res.status(200).json({
+      status: "success",
+      results: results.rows.length,
+      data: {
+        review: results.rows[0],
+      },
+    });
+  } catch (err) {
+    console.error(err.message);
+  }
+});
+
+//Add a review
+app.post("/addBookReview/:id", async (req, res) => {
+  try {
+    const { user_username, review, rating } = req.body;
+    const results = await db.query(
+      "INSERT INTO reviews (bookslist_id, user_username, review, rating) VALUES ($1, $2, $3, $4) returning *",
+      [req.params.id, user_username, review, rating]
+    );
+    res.status(201).json({
+      status: "success",
+      data: {
+        review: results.rows[0],
+      },
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+//edit review
+app.put("/alterreview/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { review, rating } = req.body;
+    const results = await db.query(
+      "UPDATE reviews SET review = $1, rating = $2 WHERE id = $3 RETURNING *",
+      [review, rating, id]
+    );
+    res.status(200).json({
+      status: "success",
+      data: {
+        review: results.rows[0],
+      },
+    });
+  } catch (err) {
+    console.error(err.message);
+  }
+});
+
+//Delete review
+app.delete("/deletereview/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const results = await db.query("DELETE FROM reviews WHERE id = $1", [id]);
     res.status(200).json({
       status: "success",
     });

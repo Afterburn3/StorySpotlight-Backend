@@ -23,7 +23,7 @@ CREATE TABLE users (
 CREATE TABLE reviews (
     id BIGSERIAL NOT NULL PRIMARY KEY,
     booksList_id BIGINT NOT NULL REFERENCES booksList(id),
-    useremail_id BIGINT NOT NULL REFERENCES users(email),
+    username_id BIGINT NOT NULL REFERENCES users(user_id),
     review TEXT NOT NULL,
     rating INT NOT NULL check(
         rating >= 1
@@ -32,12 +32,4 @@ CREATE TABLE reviews (
     created_at DATE DEFAULT current_date
 );
 
-select *
-from restaurants
-    left join(
-        select restaurant_id,
-            count(*),
-            TRUNC(AVG(rating, 1)) as average_rating
-        from reviews
-        group by restaurant_id
-    ) reviews on restaurants.id = reviews.restaurant_id;
+SELECT Avg(rating) FROM reviews WHERE bookslist_id = 10;
