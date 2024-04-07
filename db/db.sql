@@ -1,4 +1,5 @@
 -- Table:
+-- http://localhost/pgadmin4/browser/
 -- Books with review, Users sign up, List of Review
 
 CREATE TABLE booksList (
