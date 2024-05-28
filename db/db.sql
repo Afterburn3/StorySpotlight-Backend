@@ -2,12 +2,17 @@
 -- http://localhost/pgadmin4/browser/
 -- Books with review, Users sign up, List of Review
 
-CREATE TABLE booksList (
+-- ubuntu server start
+-- sudo service postgresql start
+-- psql -d booklistdata -U postgres
+
+
+CREATE TABLE bookslist (
     id BIGSERIAL NOT NULL PRIMARY KEY,
     book_title VARCHAR(50) NOT NULL,
     author VARCHAR(50) NOT NULL,
     book_id VARCHAR(50) NOT NULL,
-    year INT NOT NULL,
+    year VARCHAR(50) NOT NULL,
     book_snippet VARCHAR NOT NULL,
     img_link VARCHAR(255) NOT NULL,
     categories VARCHAR(50) NOT NULL,
@@ -24,7 +29,7 @@ CREATE TABLE users (
 CREATE TABLE reviews (
     id BIGSERIAL NOT NULL PRIMARY KEY,
     booksList_id BIGINT NOT NULL REFERENCES booksList(id),
-    username_id BIGINT NOT NULL REFERENCES users(user_id),
+    user_username VARCHAR(50) NOT NULL REFERENCES users(username),
     review TEXT NOT NULL,
     rating INT NOT NULL check(
         rating >= 1
@@ -32,5 +37,3 @@ CREATE TABLE reviews (
     ),
     created_at DATE DEFAULT current_date
 );
-
-SELECT Avg(rating) FROM reviews WHERE bookslist_id = 10;
