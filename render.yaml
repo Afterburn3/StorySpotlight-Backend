@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: storyspotlight-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: storyspotlight-db
+      - key: SECRET
+        value: your_jwt_secret
+      - key: CLIENT_URL
+        value: https://storyspotlight-frontend.onrender.com
