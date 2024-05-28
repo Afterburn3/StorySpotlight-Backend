@@ -17,7 +17,15 @@ const port = 4000;
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(
+  cors({
+    origin: [
+      process.env.CLIENT_URL,
+      "https://storyspotlight-frontend.onrender.com",
+    ],
+    credentials: true,
+  })
+);
 app.use(passport.initialize());
 
 //checking password, email and username with express-validator
